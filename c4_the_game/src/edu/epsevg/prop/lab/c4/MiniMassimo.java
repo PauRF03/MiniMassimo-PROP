@@ -6,44 +6,62 @@ import java.util.Collections;
 import java.util.Comparator;
 
 /**
- * MiniMassimo: Jugador inteligente para Conecta 4 utilizando Minimax con poda alfa-beta y heurística mejorada.
- * @author 
+ * MiniMassimo: Jugador de Connecta 4 utilitzant Minimax amb poda alfa-beta.
+ * @author Pau Ramos
+ * @author Ilarion Tsekot
  */
 public class MiniMassimo implements Jugador, IAuto {
 
     private String nom;
     private int profunditatMaxima;
+    private int nodesExplorats;
 
+    /**
+     * Constructora
+     * @param d correspon a la profunditat màxima a la que volem que arribi el jugador
+     */
     public MiniMassimo(int d) {
+        this.nodesExplorats = 0;
         this.profunditatMaxima = d;
         this.nom = "MiniMassimo";
-        this.profunditatMaxima = 8; // Aumentamos la profundidad máxima
     }
 
+    /**
+     * 
+     * @param t
+     * @param color
+     * @return 
+     */
     @Override
     public int moviment(Tauler t, int color) {
-        int millorMoviment = -1;
+        int millorMoviment = -1; //No hi ha millor moviment inicialment
         int millorValor = Integer.MIN_VALUE;
-
-        List<Integer> moviments = getMovimientosValidos(t);
-        ordenarMovimientosCentrales(moviments, t);
-
+        List<Integer> moviments = getMovimentsValids(t); //Obtenir tots els moviments possibles amb el tauler actual
+        ordenarMoviments(moviments, t);
         for (int col : moviments) {
             Tauler nouTauler = new Tauler(t);
             nouTauler.afegeix(col, color);
             int valorMoviment = minimax(nouTauler, profunditatMaxima - 1, false, color, Integer.MIN_VALUE, Integer.MAX_VALUE);
-
             if (valorMoviment > millorValor) {
                 millorValor = valorMoviment;
                 millorMoviment = col;
             }
         }
-
         return millorMoviment;
     }
 
+    /**
+     * 
+     * @param tauler
+     * @param profunditat
+     * @param maximitzant
+     * @param color
+     * @param alpha
+     * @param beta
+     * @return 
+     */
     private int minimax(Tauler tauler, int profunditat, boolean maximitzant, int color, int alpha, int beta) {
-        int resultat = evaluarTauler(tauler, color);
+        int resultat = avaluarTauler(tauler, color);
 
         if (profunditat == 0 || Math.abs(resultat) >= 1000000 || !tauler.espotmoure()) {
             return resultat;
@@ -51,9 +69,8 @@ public class MiniMassimo implements Jugador, IAuto {
 
         if (maximitzant) {
             int maxValor = Integer.MIN_VALUE;
-            List<Integer> moviments = getMovimientosValidos(tauler);
-            ordenarMovimientosCentrales(moviments, tauler);
-
+            List<Integer> moviments = getMovimentsValids(tauler);
+            ordenarMoviments(moviments, tauler);
             for (int col : moviments) {
                 Tauler nouTauler = new Tauler(tauler);
                 nouTauler.afegeix(col, color);
@@ -68,8 +85,8 @@ public class MiniMassimo implements Jugador, IAuto {
         } else {
             int minValor = Integer.MAX_VALUE;
             int oponentColor = -color;
-            List<Integer> moviments = getMovimientosValidos(tauler);
-            ordenarMovimientosCentrales(moviments, tauler);
+            List<Integer> moviments = getMovimentsValids(tauler);
+            ordenarMoviments(moviments, tauler);
 
             for (int col : moviments) {
                 Tauler nouTauler = new Tauler(tauler);
@@ -85,34 +102,37 @@ public class MiniMassimo implements Jugador, IAuto {
         }
     }
 
-    private int evaluarTauler(Tauler tauler, int color) {
-        int puntuacion = 0;
+    /**
+     * 
+     * @param tauler tauler a analitzar
+     * @param color el color del nostre jugador
+     * @return heurística del tauler analitzat
+     */
+    private int avaluarTauler(Tauler tauler, int color) {
+      
+        //Verificar si hem guanyat
+        if (haGuanyat(tauler, color)) return 1000000; //Si guanyem l'heurística és molt bona
 
-        // Verificar si el jugador actual ha ganado
-        if (haGanado(tauler, color)) {
-            return 1000000;
-        }
-
-        // Verificar si el oponente ha ganado
-        if (haGanado(tauler, -color)) {
-            return -1000000;
-        }
-
-        // Heurística avanzada
-        puntuacion += evaluarPosicion(tauler, color);
+        //Verificar si l'oponent ha guanyat
+        if (haGuanyat(tauler, -color)) return -1000000; //Si perdem, l'heurística és molt dolenta
         
-        
-        return puntuacion;
+        return avaluarPosicio(tauler, color);
     }
 
-    private int evaluarPosicion(Tauler tauler, int color) {
-        int puntuacion = 0;
+    /**
+     * 
+     * @param tauler
+     * @param color
+     * @return 
+     */
+    private int avaluarPosicio(Tauler tauler, int color) {
+        int puntuacio = 0;
 
         int centerColumn = tauler.getMida() / 2;
         // Priorizar control del centro
         for (int fila = 0; fila < tauler.getMida(); fila++) {
             if (tauler.getColor(fila, centerColumn) == color) {
-                puntuacion += 6;
+                puntuacio += 6;
             }
         }
 
@@ -124,7 +144,7 @@ public class MiniMassimo implements Jugador, IAuto {
                 for (int i = 0; i < 4; i++) {
                     ventana[i] = tauler.getColor(fila, col + i);
                 }
-                puntuacion += evaluarVentana(ventana, color);
+                puntuacio += evaluarFinestra(ventana, color);
             }
         }
 
@@ -135,7 +155,7 @@ public class MiniMassimo implements Jugador, IAuto {
                 for (int i = 0; i < 4; i++) {
                     ventana[i] = tauler.getColor(fila + i, col);
                 }
-                puntuacion += evaluarVentana(ventana, color);
+                puntuacio += evaluarFinestra(ventana, color);
             }
         }
 
@@ -146,7 +166,7 @@ public class MiniMassimo implements Jugador, IAuto {
                 for (int i = 0; i < 4; i++) {
                     ventana[i] = tauler.getColor(fila + i, col + i);
                 }
-                puntuacion += evaluarVentana(ventana, color);
+                puntuacio += evaluarFinestra(ventana, color);
             }
         }
 
@@ -157,94 +177,127 @@ public class MiniMassimo implements Jugador, IAuto {
                 for (int i = 0; i < 4; i++) {
                     ventana[i] = tauler.getColor(fila - i, col + i);
                 }
-                puntuacion += evaluarVentana(ventana, color);
+                puntuacio += evaluarFinestra(ventana, color);
             }
         }
 
-        return puntuacion;
+        return puntuacio;
     }
 
-    private int evaluarVentana(int[] ventana, int color) {
-        int puntuacion = 0;
-        int oponenteColor = -color;
-        int conteoColor = 0;
-        int conteoVacio = 0;
-        int conteoOponente = 0;
-
-        for (int celda : ventana) {
-            if (celda == color) {
-                conteoColor++;
-            } else if (celda == oponenteColor) {
-                conteoOponente++;
+    /**
+     * 
+     * @param finestra
+     * @param color
+     * @return 
+     */
+    private int evaluarFinestra(int[] finestra, int color) {
+        int puntuacio = 0;
+        int oponentColor = -color;
+        int conteigColor = 0;
+        int conteigBuit = 0;
+        int conteigOponent = 0;
+        for (int casella : finestra) {
+            if (casella == color) {
+                conteigColor++;
+            } else if (casella == oponentColor) {
+                conteigOponent++;
             } else {
-                conteoVacio++;
+                conteigBuit++;
             }
         }
-
-        if (conteoColor == 4) {
-            puntuacion += 100000;
-        } else if (conteoColor == 3 && conteoVacio == 1) {
-            puntuacion += 100;
-        } else if (conteoColor == 2 && conteoVacio == 2) {
-            puntuacion += 10;
+        if (conteigColor == 4) {
+            puntuacio += 100000;
+        } else if (conteigColor == 3 && conteigBuit == 1) {
+            puntuacio += 100;
+        } else if (conteigColor == 2 && conteigBuit == 2) {
+            puntuacio += 10;
         }
 
-        if (conteoOponente == 3 && conteoVacio == 1) {
-            puntuacion -= 80;
+        if (conteigOponent == 3 && conteigBuit == 1) {
+            puntuacio -= 80;
         }
 
-        return puntuacion;
+        return puntuacio;
     }
 
-    private boolean haGanado(Tauler tauler, int color) {
-        // Verificar todas las posiciones del tablero para detectar una victoria
+    /**
+     * Comprova si el color indicat guanya al tauler a analitzar
+     * @param tauler tauler a analitzar
+     * @param color color del jugador
+     * @return true si el color indicat ha guanyat, false si no ho ha fet
+     */
+    private boolean haGuanyat(Tauler tauler, int color) {
+        // Verificar totes les posicions del tauler per detectar una victoria
         for (int fila = 0; fila < tauler.getMida(); fila++) {
             for (int col = 0; col < tauler.getMida(); col++) {
                 if (tauler.getColor(fila, col) == color) {
-                    if (verificarDireccion(tauler, fila, col, 1, 0, color)) return true; // Horizontal
-                    if (verificarDireccion(tauler, fila, col, 0, 1, color)) return true; // Vertical
-                    if (verificarDireccion(tauler, fila, col, 1, 1, color)) return true; // Diagonal \
-                    if (verificarDireccion(tauler, fila, col, 1, -1, color)) return true; // Diagonal /
+                    if (verificarDireccio(tauler, fila, col, 1, 0, color)) return true; // Horitzontal -
+                    if (verificarDireccio(tauler, fila, col, 0, 1, color)) return true; // Vertical |
+                    if (verificarDireccio(tauler, fila, col, 1, 1, color)) return true; // Diagonal \
+                    if (verificarDireccio(tauler, fila, col, 1, -1, color)) return true; // Diagonal /
                 }
             }
         }
         return false;
     }
 
-    private boolean verificarDireccion(Tauler tauler, int fila, int col, int dirX, int dirY, int color) {
-        int contador = 0;
+    /**
+     * Comprova si s'han connectat 4 peces en la direcció especificada
+     * @param tauler tauler on es busquen les 4 peces connectades
+     * @param fila
+     * @param col
+     * @param dirX
+     * @param dirY
+     * @param color color de les peces que es busquen si estan connectades
+     * @return true si hi han quatre peces connectades, false si no
+     */
+    private boolean verificarDireccio(Tauler tauler, int fila, int col, int dirX, int dirY, int color) {
+        int comptador = 0;
         for (int i = 0; i < 4; i++) {
             int x = fila + i * dirX;
             int y = col + i * dirY;
             if (x >= 0 && x < tauler.getMida() && y >= 0 && y < tauler.getMida() && tauler.getColor(x, y) == color) {
-                contador++;
+                comptador++;
             } else {
                 break;
             }
         }
-        return contador == 4;
+        return comptador == 4;
     }
 
-    private List<Integer> getMovimientosValidos(Tauler tauler) {
-        List<Integer> movimientos = new ArrayList<>();
+    /**
+     * Comprova a quines columnes es pot posar una fitxa i retorna els seus indexs
+     * @param tauler tauler des del que es vol fer el moviment
+     * @return una llista amb l'índex de cada columna on es pot llançar una fitxa
+     */
+    private List<Integer> getMovimentsValids(Tauler tauler) {
+        List<Integer> moviments = new ArrayList<>();
+        //Per cada columna, si es pot fer un moviment, s'afegeix a la llista
         for (int col = 0; col < tauler.getMida(); col++) {
-            if (tauler.movpossible(col)) {
-                movimientos.add(col);
-            }
+            if (tauler.movpossible(col))  moviments.add(col);
         }
-        return movimientos;
+        return moviments;
     }
 
-    private void ordenarMovimientosCentrales(List<Integer> movimientos, Tauler tauler) {
+    /**
+     * Ordena una llista de index de columnes de forma decreixent segons la proximitat amb la columna central del tauler 
+     * @param moviments llista a ordenar amb els indexs de les columnes on es pot col·locar una fitxa
+     * @param tauler tauler actual
+     */
+    private void ordenarMoviments(List<Integer> moviments, Tauler tauler) {
         int center = tauler.getMida() / 2;
-        Collections.sort(movimientos, new Comparator<Integer>() {
+        Collections.sort(moviments, new Comparator<Integer>() {
             @Override
             public int compare(Integer a, Integer b) {
                 return Integer.compare(Math.abs(center - a), Math.abs(center - b));
             }
         });
     }
-
+    
+    /**
+     * Getter del nom del jugador
+     * @return nom del jugador
+     */
     @Override
     public String nom() {
         return this.nom;
