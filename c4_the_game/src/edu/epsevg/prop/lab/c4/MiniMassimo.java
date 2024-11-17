@@ -12,8 +12,8 @@ import java.util.Comparator;
  */
 public class MiniMassimo implements Jugador, IAuto {
 
-    private String nom;
-    private int profunditatMaxima;
+    private final String nom;
+    private final int profunditatMaxima;
     private int nodesExplorats;
 
     /**
@@ -27,7 +27,7 @@ public class MiniMassimo implements Jugador, IAuto {
     }
 
     /**
-     * 
+     * Funcio que calcula quin moviment s'ha de realitzar i envia la columna a la que s'ha de col·locar una fitxa
      * @param t tauler sobre el que es vol realitzar un moviment
      * @param color color del jugador
      * @return la columna corresponent al millor moviment realitzable després d'executar l'algorisme minimax
@@ -47,62 +47,75 @@ public class MiniMassimo implements Jugador, IAuto {
                 millorMoviment = col;
             }
         }
+        System.out.println("Nodes explorats per fer el moviment: "+ nodesExplorats);
         return millorMoviment;
     }
 
     /**
-     * 
-     * @param tauler
-     * @param profunditat
+     * Implementa l'algoritme Minimax amb poda alfa-beta.
+     * @param tauler L'estat actual del joc.
+     * @param profunditat El nivell del moviment.
      * @param maximitzant
-     * @param color
-     * @param alpha
-     * @param beta
-     * @return 
+     * @param color El color del nostre jugador
+     * @param alpha El valor alfa per a la poda (millor opció del maximitzador).
+     * @param beta El valor beta per a la poda (millor opció del minimitzador).
+     * @return el millor valor heurístic trobat per al moviment actual.
      */
     private int minimax(Tauler tauler, int profunditat, boolean maximitzant, int color, int alpha, int beta) {
         int resultat = avaluarTauler(tauler, color); //Obtenir valor heurístic pel tauler
         
+        this.nodesExplorats++; // Incrementa el comptador de nodes explorats
+        
         //Si s'ha arribat a la profunditat màxima, s'ha guanyat o estan totes les columnes plenes retorna el resultat
         if (profunditat == 0 || Math.abs(resultat) >= 1000000 || !tauler.espotmoure()) return resultat;
 
+        // Si és el torn del maximitzador (el nostre jugador):
         if (maximitzant) {
-            int maxValor = Integer.MIN_VALUE;
-            List<Integer> moviments = getMovimentsValids(tauler);
+            int maxValor = Integer.MIN_VALUE; // Inicialitza el valor màxim a un valor molt baix.
+            List<Integer> moviments = getMovimentsValids(tauler); // Obté les columnes disponibles per moure.
             ordenarMoviments(moviments, tauler);
+            // Prova cada moviment disponible.
             for (int col : moviments) {
-                Tauler nouTauler = new Tauler(tauler);
-                nouTauler.afegeix(col, color);
+                Tauler nouTauler = new Tauler(tauler); // Crea una còpia del tauler per simular el moviment.
+                nouTauler.afegeix(col, color); // Afegeix una peça del jugador actual en la columna seleccionada.
+                // Avalua el moviment recursivament, passant al torn del minimitzador.
                 int valor = minimax(nouTauler, profunditat - 1, false, color, alpha, beta);
-                maxValor = Math.max(maxValor, valor);
+                maxValor = Math.max(maxValor, valor); // Actualitza el valor màxim trobat fins ara. // Actualitza el límit alfa (millor opció coneguda per al maximitzador).
                 alpha = Math.max(alpha, valor);
+                // Poda beta: si el valor actual és millor que el límit beta, s'atura l'exploració.
                 if (beta <= alpha) {
                     break; // Poda beta
                 }
             }
-            return maxValor;
-        } else {
-            int minValor = Integer.MAX_VALUE;
-            int oponentColor = -color;
-            List<Integer> moviments = getMovimentsValids(tauler);
+            return maxValor; // Retorna el millor valor trobat per al maximitzador.
+        } else { // Si és el torn de l'oponent:
+            int minValor = Integer.MAX_VALUE; // Inicialitza el valor mínim a un valor molt alt.
+            int oponentColor = -color; // Color de l'oponent.
+            List<Integer> moviments = getMovimentsValids(tauler); // Obté els moviments disponibles
             ordenarMoviments(moviments, tauler);
 
+            // Prova cada moviment disponible.
             for (int col : moviments) {
+                // Crea una còpia del tauler per simular el moviment de l'oponent.
                 Tauler nouTauler = new Tauler(tauler);
-                nouTauler.afegeix(col, oponentColor);
+                nouTauler.afegeix(col, oponentColor); // Afegeix una peça de l'oponent.
+                // Avalua el moviment recursivament, passant al torn del maximitzador.
                 int valor = minimax(nouTauler, profunditat - 1, true, color, alpha, beta);
+                // Actualitza el valor mínim trobat fins ara.
                 minValor = Math.min(minValor, valor);
+                // Actualitza el límit beta (millor opció coneguda per al minimitzador).
                 beta = Math.min(beta, valor);
+                // Poda alfa: si el valor actual és pitjor que el límit alfa, s'atura l'exploració.
                 if (beta <= alpha) {
                     break; // Poda alfa
                 }
             }
-            return minValor;
+            return minValor; // Retorna el millor valor trobat per al minimitzador.
         }
     }
 
     /**
-     * 
+     * Avalua un tauler i retorna un valor heurístic per determinar com de bo és l'estat actual del joc.
      * @param tauler tauler a analitzar
      * @param color el color del nostre jugador
      * @return heurística del tauler analitzat
@@ -115,6 +128,7 @@ public class MiniMassimo implements Jugador, IAuto {
         //Verificar si l'oponent ha guanyat
         if (haGuanyat(tauler, -color)) return -1000000; //Si perdem, l'heurística és molt dolenta
         
+        //Calcular heurística segons l'estat del tauler
         return avaluarPosicio(tauler, color);
     }
 
