@@ -28,21 +28,21 @@ public class MiniMassimo implements Jugador, IAuto {
 
     /**
      * 
-     * @param t
-     * @param color
-     * @return 
+     * @param t tauler sobre el que es vol realitzar un moviment
+     * @param color color del jugador
+     * @return la columna corresponent al millor moviment realitzable després d'executar l'algorisme minimax
      */
     @Override
     public int moviment(Tauler t, int color) {
         int millorMoviment = -1; //No hi ha millor moviment inicialment
         int millorValor = Integer.MIN_VALUE;
         List<Integer> moviments = getMovimentsValids(t); //Obtenir tots els moviments possibles amb el tauler actual
-        ordenarMoviments(moviments, t);
+        ordenarMoviments(moviments, t); //Ordenar els indexs de les columnes per afavorir la poda alfa-beta
         for (int col : moviments) {
             Tauler nouTauler = new Tauler(t);
-            nouTauler.afegeix(col, color);
-            int valorMoviment = minimax(nouTauler, profunditatMaxima - 1, false, color, Integer.MIN_VALUE, Integer.MAX_VALUE);
-            if (valorMoviment > millorValor) {
+            nouTauler.afegeix(col, color); //Per cada moviment possible, crear una copia del tauler i afegir-li la peça
+            int valorMoviment = minimax(nouTauler, profunditatMaxima - 1, false, color, Integer.MIN_VALUE, Integer.MAX_VALUE); //avaluar el nou tauler per obtenir el valro heurístic del moviment
+            if (valorMoviment > millorValor) { //Si s'obté un millor valor heurístic pel nou tauler, actualitzar les variables del valor i la columna 
                 millorValor = valorMoviment;
                 millorMoviment = col;
             }
@@ -61,11 +61,10 @@ public class MiniMassimo implements Jugador, IAuto {
      * @return 
      */
     private int minimax(Tauler tauler, int profunditat, boolean maximitzant, int color, int alpha, int beta) {
-        int resultat = avaluarTauler(tauler, color);
-
-        if (profunditat == 0 || Math.abs(resultat) >= 1000000 || !tauler.espotmoure()) {
-            return resultat;
-        }
+        int resultat = avaluarTauler(tauler, color); //Obtenir valor heurístic pel tauler
+        
+        //Si s'ha arribat a la profunditat màxima, s'ha guanyat o estan totes les columnes plenes retorna el resultat
+        if (profunditat == 0 || Math.abs(resultat) >= 1000000 || !tauler.espotmoure()) return resultat;
 
         if (maximitzant) {
             int maxValor = Integer.MIN_VALUE;
@@ -121,63 +120,61 @@ public class MiniMassimo implements Jugador, IAuto {
 
     /**
      * 
-     * @param tauler
-     * @param color
+     * @param tauler tauler a analitzar
+     * @param color el color del nostre jugador
      * @return 
      */
     private int avaluarPosicio(Tauler tauler, int color) {
         int puntuacio = 0;
-
-        int centerColumn = tauler.getMida() / 2;
-        // Priorizar control del centro
+        int centre = tauler.getMida() / 2;
+        
+        // Prioritzar el control de la columna central.
         for (int fila = 0; fila < tauler.getMida(); fila++) {
-            if (tauler.getColor(fila, centerColumn) == color) {
-                puntuacio += 6;
-            }
+            // Suma puntuació si una cel·la de la columna central conté el color del jugador.
+            if (tauler.getColor(fila, centre) == color) puntuacio += 6;
         }
 
-        // Evaluar todas las ventanas posibles de 4 fichas
+        // Avalua totes les possibles combinacions horitzontals de 4 fitxes.
         for (int fila = 0; fila < tauler.getMida(); fila++) {
             for (int col = 0; col < tauler.getMida() - 3; col++) {
-                // Horizontal
-                int[] ventana = new int[4];
+                int[] finestra = new int[4]; // Finestra de 4 cel·les consecutives.
                 for (int i = 0; i < 4; i++) {
-                    ventana[i] = tauler.getColor(fila, col + i);
+                    finestra[i] = tauler.getColor(fila, col + i);
                 }
-                puntuacio += evaluarFinestra(ventana, color);
+                puntuacio += avaluarFinestra(finestra, color); // Avalua la finestra i suma la puntuació.
             }
         }
 
+        // Avalua totes les possibles combinacions verticals de 4 fitxes.
         for (int fila = 0; fila < tauler.getMida() - 3; fila++) {
             for (int col = 0; col < tauler.getMida(); col++) {
-                // Vertical
-                int[] ventana = new int[4];
+                int[] finestra = new int[4];
                 for (int i = 0; i < 4; i++) {
-                    ventana[i] = tauler.getColor(fila + i, col);
+                    finestra[i] = tauler.getColor(fila + i, col);
                 }
-                puntuacio += evaluarFinestra(ventana, color);
+                puntuacio += avaluarFinestra(finestra, color);
             }
         }
 
+        // Avalua totes les possibles combinacions diagonals positives (\) de 4 fitxes.
         for (int fila = 0; fila < tauler.getMida() - 3; fila++) {
             for (int col = 0; col < tauler.getMida() - 3; col++) {
-                // Diagonal positiva
-                int[] ventana = new int[4];
+                int[] finestra = new int[4];
                 for (int i = 0; i < 4; i++) {
-                    ventana[i] = tauler.getColor(fila + i, col + i);
+                    finestra[i] = tauler.getColor(fila + i, col + i);
                 }
-                puntuacio += evaluarFinestra(ventana, color);
+                puntuacio += avaluarFinestra(finestra, color);
             }
         }
 
+        // Avalua totes les possibles combinacions diagonals negatives (/) de 4 fitxes.
         for (int fila = 3; fila < tauler.getMida(); fila++) {
             for (int col = 0; col < tauler.getMida() - 3; col++) {
-                // Diagonal negativa
-                int[] ventana = new int[4];
+                int[] finestra = new int[4];
                 for (int i = 0; i < 4; i++) {
-                    ventana[i] = tauler.getColor(fila - i, col + i);
+                    finestra[i] = tauler.getColor(fila - i, col + i);
                 }
-                puntuacio += evaluarFinestra(ventana, color);
+                puntuacio += avaluarFinestra(finestra, color);
             }
         }
 
@@ -185,17 +182,20 @@ public class MiniMassimo implements Jugador, IAuto {
     }
 
     /**
-     * 
-     * @param finestra
-     * @param color
-     * @return 
+     * Avalua una finestra específica de 4 cel·les i calcula una puntuació
+     * basada en el contingut d'aquestes cel·les per al jugador i l'oponent.
+     * @param finestra array de 4 enters que representen les cel·les a analitzar.
+     * @param color el color del nostre jugador.
+     * @return puntuació calculada per a aquesta finestra.
      */
-    private int evaluarFinestra(int[] finestra, int color) {
+    private int avaluarFinestra(int[] finestra, int color) {
         int puntuacio = 0;
-        int oponentColor = -color;
-        int conteigColor = 0;
-        int conteigBuit = 0;
-        int conteigOponent = 0;
+        int oponentColor = -color; // Especifica el color de l'oponent.
+        int conteigColor = 0; // Comptador de cel·les ocupades pel jugador.
+        int conteigBuit = 0; // Comptador de cel·les buides.
+        int conteigOponent = 0; // Comptador de cel·les ocupades per l'oponent.
+        
+        // Itera les caselles de la finestra i compta els tipus de valors.
         for (int casella : finestra) {
             if (casella == color) {
                 conteigColor++;
@@ -205,19 +205,24 @@ public class MiniMassimo implements Jugador, IAuto {
                 conteigBuit++;
             }
         }
+        
+        // Si totes les cel·les són del jugador, atorga la puntuació per guanyar.
         if (conteigColor == 4) {
             puntuacio += 100000;
+        // Si el jugador té 3 cel·les i una buida, atorga una puntuació alta.
         } else if (conteigColor == 3 && conteigBuit == 1) {
             puntuacio += 100;
+        // Si el jugador té 2 cel·les i dues buides, atorga una puntuació positiva però menor.
         } else if (conteigColor == 2 && conteigBuit == 2) {
             puntuacio += 10;
         }
 
+        // Disminueix la puntuació si l'oponent té 3 cel·les i una buida.
         if (conteigOponent == 3 && conteigBuit == 1) {
             puntuacio -= 80;
         }
 
-        return puntuacio;
+        return puntuacio; // Retorna la puntuació final de la finestra.
     }
 
     /**
@@ -280,7 +285,7 @@ public class MiniMassimo implements Jugador, IAuto {
     }
 
     /**
-     * Ordena una llista de index de columnes de forma decreixent segons la proximitat amb la columna central del tauler 
+     * Ordena una llista de index de columnes de forma decreixent segons la proximitat a la columna central del tauler 
      * @param moviments llista a ordenar amb els indexs de les columnes on es pot col·locar una fitxa
      * @param tauler tauler actual
      */
