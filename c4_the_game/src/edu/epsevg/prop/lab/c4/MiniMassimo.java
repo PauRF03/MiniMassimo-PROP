@@ -98,7 +98,7 @@ public class MiniMassimo implements Jugador, IAuto {
                 maxValor = Math.max(maxValor, valor); // Actualitza el valor màxim trobat fins ara. // Actualitza el límit alfa (millor opció coneguda per al maximitzador).
                 alpha = Math.max(alpha, valor);
                 // Poda beta: si el valor actual és millor que el límit beta, s'atura l'exploració.
-                if (beta <= alpha) {
+                if (poda && beta <= alpha) {
                     break; // Poda beta
                 }
             }
@@ -223,7 +223,7 @@ public class MiniMassimo implements Jugador, IAuto {
 
         // Si totes les cel·les són del jugador, atorga la puntuació per guanyar.
         if (conteigColor == 4) {
-            puntuacio += 100000;
+            puntuacio += 1000000;
             // Si el jugador té 3 cel·les i una buida, atorga una puntuació alta.
         } else if (conteigColor == 3 && conteigBuit == 1) {
             puntuacio += 100;
