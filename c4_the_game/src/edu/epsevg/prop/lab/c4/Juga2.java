@@ -101,7 +101,7 @@ public class Juga2 extends javax.swing.JFrame {
         //Jugador p2 = new Profe(2,false);
         //Jugador p2 = new Manual();
         //Jugador p2 = new DemoPlayer();
-        Jugador p2 = new MiniMassimo(8, true);
+        Jugador p2 = new MiniMassimo(8, true, true);
         boolean autoMode = true;
         final Juga2 j = new Juga2(p1, p2, autoMode);
 

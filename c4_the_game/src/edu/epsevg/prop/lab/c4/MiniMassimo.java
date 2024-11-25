@@ -14,22 +14,24 @@ import java.util.Comparator;
 public class MiniMassimo implements Jugador, IAuto {
 
     private final String nom;
-    private final boolean poda;
+    private final boolean poda, ordenacio;
     private final int profunditatMaxima;
-    private int nodesExplorats;
+    private int nodesTotalsExplorats, nodesExploratsMoviment;
 
     /**
      * Constructora
      *
-     * @param d correspon a la profunditat màxima a la que volem que arribi el
-     * jugador
-     * @param poda
+     * @param d correspon a la profunditat màxima a la que volem que arribi el jugador
+     * @param poda true si volem que el minimax utilitzi poda, false si no
+     * @param ordenacio true si volem ordenar les columnes per realitzar moviments, false si no
      */
-    public MiniMassimo(int d, boolean poda) {
-        this.nodesExplorats = 0;
+    public MiniMassimo(int d, boolean poda, boolean ordenacio) {
+        this.nodesTotalsExplorats = 0;
+        this.nodesExploratsMoviment = 0;
         this.profunditatMaxima = d;
         this.nom = "MiniMassimo";
         this.poda = poda;
+        this.ordenacio = ordenacio;
     }
 
     /**
@@ -38,15 +40,14 @@ public class MiniMassimo implements Jugador, IAuto {
      *
      * @param t tauler sobre el que es vol realitzar un moviment
      * @param color color del jugador
-     * @return la columna corresponent al millor moviment realitzable després
-     * d'executar l'algorisme minimax
+     * @return la columna corresponent al millor moviment realitzable després d'executar l'algorisme minimax
      */
     @Override
     public int moviment(Tauler t, int color) {
         int millorMoviment = -1; //No hi ha millor moviment inicialment
         int millorValor = Integer.MIN_VALUE;
         List<Integer> moviments = getMovimentsValids(t); //Obtenir tots els moviments possibles amb el tauler actual
-        ordenarMoviments(moviments, t); //Ordenar els indexs de les columnes per afavorir la poda alfa-beta
+        if(ordenacio) ordenarMoviments(moviments, t); //Ordenar els indexs de les columnes per afavorir la poda alfa-beta
         for (int col : moviments) {
             Tauler nouTauler = new Tauler(t);
             nouTauler.afegeix(col, color); //Per cada moviment possible, crear una copia del tauler i afegir-li la peça
@@ -56,7 +57,9 @@ public class MiniMassimo implements Jugador, IAuto {
                 millorMoviment = col;
             }
         }
-        System.out.println("Nodes explorats per fer el moviment: " + nodesExplorats);
+        nodesTotalsExplorats += nodesExploratsMoviment;
+        System.out.println("Nodes explorats per fer el moviment: " + nodesExploratsMoviment + "; Total = " + nodesTotalsExplorats);
+        nodesExploratsMoviment = 0;
         return millorMoviment;
     }
 
@@ -65,7 +68,7 @@ public class MiniMassimo implements Jugador, IAuto {
      *
      * @param tauler L'estat actual del joc.
      * @param profunditat El nivell del moviment.
-     * @param maximitzant
+     * @param maximitzant True si estem maximitzant (serà un torn del nostre jugador), false si estem minimitzant
      * @param color El color del nostre jugador
      * @param alpha El valor alfa per a la poda (millor opció del maximitzador).
      * @param beta El valor beta per a la poda (millor opció del minimitzador).
@@ -74,7 +77,7 @@ public class MiniMassimo implements Jugador, IAuto {
     private int minimax(Tauler tauler, int profunditat, boolean maximitzant, int color, int alpha, int beta) {
         int resultat = avaluarTauler(tauler, color); //Obtenir valor heurístic pel tauler
 
-        this.nodesExplorats++; // Incrementa el comptador de nodes explorats
+        this.nodesExploratsMoviment++; // Incrementa el comptador de nodes explorats
 
         //Si s'ha arribat a la profunditat màxima, s'ha guanyat o estan totes les columnes plenes retorna el resultat
         if (profunditat == 0 || Math.abs(resultat) >= 1000000 || !tauler.espotmoure()) {
@@ -85,7 +88,7 @@ public class MiniMassimo implements Jugador, IAuto {
         if (maximitzant) {
             int maxValor = Integer.MIN_VALUE; // Inicialitza el valor màxim a un valor molt baix.
             List<Integer> moviments = getMovimentsValids(tauler); // Obté les columnes disponibles per moure.
-            ordenarMoviments(moviments, tauler);
+            if(ordenacio) ordenarMoviments(moviments, tauler);
             // Prova cada moviment disponible.
             for (int col : moviments) {
                 Tauler nouTauler = new Tauler(tauler); // Crea una còpia del tauler per simular el moviment.
@@ -104,7 +107,7 @@ public class MiniMassimo implements Jugador, IAuto {
             int minValor = Integer.MAX_VALUE; // Inicialitza el valor mínim a un valor molt alt.
             int oponentColor = -color; // Color de l'oponent.
             List<Integer> moviments = getMovimentsValids(tauler); // Obté els moviments disponibles
-            ordenarMoviments(moviments, tauler);
+            if(ordenacio)ordenarMoviments(moviments, tauler);
 
             // Prova cada moviment disponible.
             for (int col : moviments) {
@@ -149,10 +152,12 @@ public class MiniMassimo implements Jugador, IAuto {
     }
 
     /**
-     *
+     * Avalua un tauler i retorna un valor heurístic tenint en compte totes 
+     * les possibles finestres de 4 fitxes.
+     * 
      * @param tauler tauler a analitzar
      * @param color el color del nostre jugador
-     * @return
+     * @return la suma de puntuacions de totes les finestres possibles dins del tauler
      */
     private int avaluarPosicio(Tauler tauler, int color) {
         int puntuacio = 0;
@@ -161,9 +166,7 @@ public class MiniMassimo implements Jugador, IAuto {
         // Prioritzar el control de la columna central.
         for (int fila = 0; fila < tauler.getMida(); fila++) {
             // Suma puntuació si una cel·la de la columna central conté el color del jugador.
-            if (tauler.getColor(fila, centre) == color) {
-                puntuacio += 6;
-            }
+            if (tauler.getColor(fila, centre) == color) puntuacio += 6;
         }
 
         // Definim els desplaçaments per a cada direcció: horitzontal, vertical, diagonal ascendent (/) i diagonal descendent (\).
@@ -175,15 +178,14 @@ public class MiniMassimo implements Jugador, IAuto {
         };
 
         for (int[] direccio : direccions) {
-            int deltaFila = direccio[0];
-            int deltaCol = direccio[1];
-
+            int dFila = direccio[0];
+            int dCol = direccio[1];
             for (int fila = 0; fila < tauler.getMida(); fila++) {
                 for (int col = 0; col < tauler.getMida(); col++) {
                     // Comprovem si és possible formar una finestra de 4 a partir d'aquest punt.
-                    if (fila + 3 * deltaFila >= 0 && fila + 3 * deltaFila < tauler.getMida() && col + 3 * deltaCol >= 0 && col + 3 * deltaCol < tauler.getMida()) {
+                    if (fila + 3 * dFila >= 0 && fila + 3 * dFila < tauler.getMida() && col + 3 * dCol >= 0 && col + 3 * dCol < tauler.getMida()) {
                         int[] finestra = new int[4];
-                        for (int i = 0; i < 4; i++) finestra[i] = tauler.getColor(fila + i * deltaFila, col + i * deltaCol);
+                        for (int i = 0; i < 4; i++) finestra[i] = tauler.getColor(fila + i * dFila, col + i * dCol);
                         puntuacio += avaluarFinestra(finestra, color); // Avalua la finestra i suma la puntuació.
                     }
                 }
@@ -272,10 +274,10 @@ public class MiniMassimo implements Jugador, IAuto {
      * Comprova si s'han connectat 4 peces en la direcció especificada
      *
      * @param tauler tauler on es busquen les 4 peces connectades
-     * @param fila
-     * @param col
-     * @param dirX
-     * @param dirY
+     * @param fila indica la fila d'origen
+     * @param col indica la columna d'origen
+     * @param dirX indica si s'està mirant la direcció horitzontalment
+     * @param dirY indica si s'esta mirant la direcció verticalment (i en quin sentit)
      * @param color color de les peces que es busquen si estan connectades
      * @return true si hi han quatre peces connectades, false si no
      */
@@ -298,8 +300,7 @@ public class MiniMassimo implements Jugador, IAuto {
      * indexs
      *
      * @param tauler tauler des del que es vol fer el moviment
-     * @return una llista amb l'índex de cada columna on es pot llançar una
-     * fitxa
+     * @return una llista amb l'índex de cada columna on es pot llançar una fitxa
      */
     private List<Integer> getMovimentsValids(Tauler tauler) {
         List<Integer> moviments = new ArrayList<>();
@@ -316,17 +317,14 @@ public class MiniMassimo implements Jugador, IAuto {
      * Ordena una llista de index de columnes de forma decreixent segons la
      * proximitat a la columna central del tauler
      *
-     * @param moviments llista a ordenar amb els indexs de les columnes on es
-     * pot col·locar una fitxa
+     * @param moviments llista a ordenar amb els indexs de les columnes on es pot col·locar una fitxa
      * @param tauler tauler actual
      */
     private void ordenarMoviments(List<Integer> moviments, Tauler tauler) {
         int center = tauler.getMida() / 2;
         Collections.sort(moviments, new Comparator<Integer>() {
             @Override
-            public int compare(Integer a, Integer b) {
-                return Integer.compare(Math.abs(center - a), Math.abs(center - b));
-            }
+            public int compare(Integer a, Integer b) return Integer.compare(Math.abs(center - a), Math.abs(center - b));
         });
     }
 
