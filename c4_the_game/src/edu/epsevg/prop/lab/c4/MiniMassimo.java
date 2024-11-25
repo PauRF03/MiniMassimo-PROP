@@ -324,7 +324,9 @@ public class MiniMassimo implements Jugador, IAuto {
         int center = tauler.getMida() / 2;
         Collections.sort(moviments, new Comparator<Integer>() {
             @Override
-            public int compare(Integer a, Integer b) return Integer.compare(Math.abs(center - a), Math.abs(center - b));
+            public int compare(Integer a, Integer b) {
+                return Integer.compare(Math.abs(center - a), Math.abs(center - b));
+            }
         });
     }
 
